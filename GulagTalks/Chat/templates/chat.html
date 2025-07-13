@@ -1,0 +1,119 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Chat</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTMX CDN for dynamic content loading -->
+    <script src="https://unpkg.com/htmx.org@1.9.10" xintegrity="sha384-D1Kt99CQGqfP6UZTXhtUQfZgTGt3rpngG0RGaMlHa2kQ7aRqaagwtpvjxO+AqjGQ" crossorigin="anonymous"></script>
+    <style>
+        /* Custom styles for dark mode and scrollbar */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+        }
+        .chat-messages {
+            max-height: 70vh; /* Limit height for scrollability */
+            overflow-y: auto; /* Enable vertical scrolling */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .chat-messages::-webkit-scrollbar {
+            display: none;
+        }
+        .message-bubble {
+            max-width: 80%; /* Limit bubble width */
+            word-wrap: break-word; /* Break long words */
+        }
+        .my-message {
+            background-color: #4c51bf; /* Indigo for sender's messages */
+            color: white;
+            border-bottom-right-radius: 0; /* Adjust corner for sender */
+        }
+        .other-message {
+            background-color: #2d3748; /* Darker gray for other messages */
+            color: #e2e8f0;
+            border-bottom-left-radius: 0; /* Adjust corner for others */
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-2xl bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col">
+        <h1 class="text-3xl font-bold text-white mb-6 text-center">Public Chat</h1>
+
+        <!-- Chat Messages Container -->
+        <div id="chat-messages" class="chat-messages flex flex-col space-y-4 p-4 bg-gray-900 rounded-lg mb-6 border border-gray-700">
+            {% for message in chat_messages %}
+                <div class="flex {% if message.owner == user %}justify-end{% else %}justify-start{% endif %}">
+                    <div class="message-bubble rounded-xl p-3 {% if message.owner == user %}my-message{% else %}other-message{% endif %}">
+                        <p class="font-semibold text-sm mb-1">
+                            {% if message.owner == user %}You{% else %}{{ message.owner.username }}{% endif %}
+                        </p>
+                        <p class="text-base">{{ message.body }}</p>
+                        <span class="text-xs opacity-75 mt-1 block text-right">{{ message.created|date:"H:i" }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Message Input Form -->
+        <form hx-post="{% url 'chat-page' %}" hx-swap="beforeend" hx-target="#chat-messages" hx-on--after-request="this.reset(); scrollToBottom();" class="flex gap-4">
+            {% csrf_token %}
+            {{ form.body }}
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md">
+                Send
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Function to scroll to the bottom of the chat messages
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Scroll to bottom on initial load
+        document.addEventListener('DOMContentLoaded', scrollToBottom);
+
+        // WebSocket setup
+        // Use window.location.origin to get the base URL (protocol + hostname + port)
+        // and ensure wss:// for secure WebSocket connections.
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const chatSocket = new WebSocket(
+            wsProtocol + window.location.host + '/ws/chat/Public-Chat/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const message = e.data;
+            document.getElementById('chat-messages').insertAdjacentHTML('beforeend', message);
+            scrollToBottom();
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        // Intercept HTMX form submission to send via WebSocket
+        document.querySelector('form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default HTMX submission
+
+            const messageInput = document.querySelector('input[name="body"]');
+            const messageBody = messageInput.value;
+
+            if (messageBody.trim() !== '') {
+                chatSocket.send(JSON.stringify({
+                    'body': messageBody
+                }));
+                messageInput.value = ''; // Clear input after sending
+            }
+        });
+
+    </script>
+</body>
+</html>
