@@ -435,74 +435,27 @@
 </head>
 <body>
     <div class="chat-container">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">GulagTalks</div>
-                <div class="user-profile">
-                    <div class="user-avatar">U</div>
-                    <div class="user-info">
-                        <div class="user-name">You</div>
-                        <div class="user-status">Online</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="chat-search">
-                <input type="text" class="search-input" placeholder="Search conversations...">
-            </div>
-            
-            <div class="chat-list scrollbar-custom">
-                <div class="chat-item active">
-                    <div class="chat-avatar">
-                        A
-                        <div class="online-indicator"></div>
-                    </div>
-                    <div class="chat-info">
-                        <div class="chat-name">Alex Petrov</div>
-                        <div class="chat-preview">Hey, how's the weather today?</div>
-                    </div>
-                    <div class="chat-time"></div>
-                </div>
-            </div>
+        <div class="chat-header">
+            Public Chat
         </div>
-        
-        <div class="main-chat">
-            <div class="chat-header">
-                <div class="chat-header-info">
-                    <div class="chat-header-avatar">A</div>
-                    <div class="chat-header-details">
-                        <h3>Alex Petrov</h3>
-                        <p>Online • Last seen now</p>
-                    </div>
+
+        <div id="chat-messages" class="chat-messages">
+            <!-- Messages will be loaded here by Django and updated by WebSocket -->
+            {% for message in chat_messages %}
+                <div class="message-bubble {% if message.owner == user %}message-self{% else %}message-other{% endif %}">
+                    <div class="message-author">{{ message.owner.username }}</div>
+                    <div>{{ message.body }}</div>
+                    <div class="message-timestamp">{{ message.created|date:"M d, Y H:i" }}</div>
                 </div>
-                <div class="chat-actions">
-                    <button class="action-btn">📞 Call</button>
-                    <button class="action-btn">📹 Video</button>
-                    <button class="action-btn">⚙️ Settings</button>
-                </div>
-            </div>
-            
-            <div class="chat-messages scrollbar-custom" id="chatMessages">
-                <div class="message received">
-                    <div class="message-text">Hey there! How's your day going?</div>
-                    <div class="message-time">{% now "TIME_FORMAT" %}</div>
-                </div>
-                <div class="message sent">
-                    <div class="message-text">Absolutely! Perfect weather for staying indoors and coding 😄</div>
-                    <div class="message-time">{% now "TIME_FORMAT" %}</div>
-                </div>
-            </div>
-            
-            <div class="typing-indicator" id="typingIndicator">
-                Alex is typing...
-            </div>
-            
-            <div class="chat-input-container">
-                <div class="chat-input-wrapper">
-                    <textarea class="chat-input" placeholder="Type your message..." id="messageInput" rows="1"></textarea>
-                    <button class="send-btn" id="sendBtn">Send</button>
-                </div>
-            </div>
+            {% endfor %}
+        </div>
+
+        <div class="chat-form-container">
+            <form id="chat-form" class="chat-form" hx-post="{% url 'chat-page' %}" hx-swap="none" hx-trigger="submit">
+                {% csrf_token %}
+                {{ form.body }}
+                <button type="submit">Send</button>
+            </form>
         </div>
     </div>
 
